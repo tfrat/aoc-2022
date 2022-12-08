@@ -1,4 +1,6 @@
 from __future__ import annotations
+
+import time
 from dataclasses import dataclass
 from enum import Enum, auto
 
@@ -80,6 +82,7 @@ def highest_scenic_score(trees: list[list[int]]) -> int:
 if __name__ == '__main__':
     with open("input.txt", "r", encoding="utf-8") as f:
         trees_ = [[int(tree) for tree in line.rstrip()] for line in f.readlines()]
-
+    start = time.time()
     print(f"Visible trees: {total_visible_trees(trees_)}")
     print(f"Highest Scenic Score: {highest_scenic_score(trees_)}")
+    print(f"Time to execute: {time.time() - start}")
