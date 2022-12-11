@@ -4,6 +4,9 @@ import time
 from dataclasses import dataclass
 from enum import Enum
 
+import textual
+from textual.app import App
+
 
 class Direction(Enum):
     UP = "U"
@@ -123,6 +126,14 @@ class Rope:
         return knots
 
 
+def draw(rope: Rope) -> None:
+    pass
+
+
+class RopeApp(App):
+    pass
+
+
 if __name__ == '__main__':
     with open("input.txt", "r", encoding="utf-8") as f:
         moves_ = [line.rstrip() for line in f.readlines()]
@@ -130,7 +141,8 @@ if __name__ == '__main__':
     rope_ = Rope(10)
     for move in moves_:
         direction_, distance_ = move.split()
+        draw(rope_)
         rope_.move_head(Direction(direction_), int(distance_))
     unique_positions = len(set(rope_.tail_positions))
-    print(f"Unique Tail Position: {unique_positions}")
-    print(f"Time to execute: {time.time() - start}")
+    # print(f"Unique Tail Position: {unique_positions}")
+    # print(f"Time to execute: {time.time() - start}")
