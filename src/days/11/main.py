@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import math
 from dataclasses import  dataclass
 import time
-
 
 
 @dataclass
@@ -36,15 +36,15 @@ class Monkey:
     def catch(self, item: int) -> None:
         self.items.append(item)
 
-    def item_pass(self) -> tuple[int, int] | None:
+    def item_pass(self, lcm: int) -> tuple[int, int] | None:
         if not self.items:
             return None
         item = self.items.pop()
         worry_level = self.operation.calculate(item)
-        worry_level = int(worry_level / 3)
+        reduced_item = worry_level % lcm
         if worry_level % self.test_value == 0:
-            return worry_level, self.true_target
-        return worry_level, self.false_target
+            return reduced_item, self.true_target
+        return reduced_item, self.false_target
 
 
 def gen_monkeys(lines: list[str]) -> list[Monkey]:
@@ -61,11 +61,12 @@ def gen_monkeys(lines: list[str]) -> list[Monkey]:
     return monkeys
 
 
-def calculate_monkey_business(monkeys: list[Monkey]) -> int:
+def calculate_monkey_business(monkeys: list[Monkey], rounds: int) -> int:
     monkey_activity = [0 for _ in range(len(monkeys))]
-    for i in range(20):
+    lcm = math.lcm(*[monkey.test_value for monkey in monkeys])
+    for i in range(rounds):
         for index, monkey in enumerate(monkeys):
-            while item_pass := monkey.item_pass():
+            while item_pass := monkey.item_pass(lcm):
                 monkey_activity[index] += 1
                 item, target_monkey = item_pass
                 monkeys[target_monkey].catch(item)
@@ -75,10 +76,10 @@ def calculate_monkey_business(monkeys: list[Monkey]) -> int:
 
 
 def run() -> None:
-    with open("example.txt", "r", encoding="utf-8") as f:
+    with open("input.txt", "r", encoding="utf-8") as f:
         lines = [line.rstrip() for line in f.readlines()]
     monkeys = gen_monkeys(lines)
-    print(calculate_monkey_business(monkeys))
+    print(calculate_monkey_business(monkeys, 10000))
 
 
 if __name__ == '__main__':
