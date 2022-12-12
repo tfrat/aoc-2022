@@ -2,41 +2,17 @@ from __future__ import annotations
 
 import sys
 import time
+from collections import deque
 from dataclasses import dataclass
-from enum import Enum
-from typing import Any, Final
-
-
-def print_grid(grid: list[list[Any]]) -> None:
-    out = ""
-    for line in grid:
-        out += "| "
-        for value in line:
-            if isinstance(value, int) and 0 <= value <= 9:
-                out += " "
-            out += str(value) + " | "
-        out += "\n"
-
-    print(out)
+from enum import Enum, auto
+from typing import Any
 
 
 class Direction(Enum):
-    UP = "U"
-    LEFT = "L"
-    DOWN = "D"
-    RIGHT = "R"
-
-    @property
-    def opposite(self) -> Direction:
-        match self:
-            case Direction.UP:
-                return Direction.DOWN
-            case Direction.LEFT:
-                return Direction.RIGHT
-            case Direction.RIGHT:
-                return Direction.LEFT
-            case Direction.DOWN:
-                return Direction.UP
+    UP = auto()
+    LEFT = auto()
+    DOWN = auto()
+    RIGHT = auto()
 
 
 @dataclass(frozen=True)
@@ -62,25 +38,21 @@ class Coord:
 @dataclass
 class Grid:
     elevations: list[list[int]]
-    memo: list[list[int]]
-    visited: set[Coord]
-    high_value: Final[int] = sys.maxsize
+    width: int
+    height: int
 
     def __init__(self, elevations: list[list[int]]) -> None:
         self.elevations = elevations
-        self.memo = [[-1 for _ in range(len(elevations[0]))] for _ in range(len(elevations))]
-        self.visited = set()
+        self.width = len(self.elevations)
+        self.height = len(self.elevations[0])
 
     def is_in(self, coord: Coord) -> bool:
-        width = len(self.elevations)
-        height = len(self.elevations[0])
-        return coord.x >= 0 and coord.y >= 0 and coord.x < width and coord.y < height
+        return 0 <= coord.x < self.width and 0 <= coord.y < self.height
 
     def can_step(self, start: Coord, end: Coord) -> bool:
-        if not self.is_in(start) or not self.is_in(end) or end in self.visited:
+        if not self.is_in(end):
             return False
 
-        # return self.get_elevation(start) in {self.get_elevation(end), self.get_elevation(end) - 1}
         return self.get_elevation(start) >= self.get_elevation(end) - 1
 
     def get_elevation(self, coord: Coord) -> int:
@@ -88,35 +60,22 @@ class Grid:
             return self.elevations[coord.x][coord.y]
         return -1
 
-    def set_memo(self, coord: Coord, value: int) -> int:
-        self.memo[coord.x][coord.y] = value
-        return value
+    def find_shortest_path(self, start: Coord, target: Coord) -> int:
+        queue = deque()
+        queue.append((start, 0))
+        memo = [[-1 for _ in range(self.height)] for _ in range(self.width)]
+        while queue:
+            current, steps = queue.popleft()
+            if memo[current.x][current.y] != -1:
+                continue
 
-    def get_memo(self, coord: Coord) -> int:
-        if self.is_in(coord):
-            return self.memo[coord.x][coord.y]
-        return -1
+            memo[current.x][current.y] = (current, steps)
 
-    def find_shortest_path(self, steps: int, start: Coord, end: Coord) -> int:
-        if start == end:
-            return steps
-
-        if (memo := self.get_memo(start)) != -1:
-            return memo + 1
-
-        self.visited.add(start)
-
-        possible_steps = []
-        for direction in Direction:
-            next_coord = start.move(direction)
-            if self.can_step(start, next_coord):
-                possible_steps.append(self.find_shortest_path(next_coord, end))
-
-        self.visited.remove(start)
-
-        if not possible_steps:
-            return self.high_value
-        return 1 + self.set_memo(start, min(possible_steps))
+            for direction in Direction:
+                next_coord = current.move(direction)
+                if self.can_step(current, next_coord):
+                    queue.append((next_coord, steps + 1))
+        return memo[target.x][target.y]
 
 
 def create_grid(lines: list[str]) -> Grid:
@@ -141,15 +100,38 @@ def create_grid(lines: list[str]) -> Grid:
     return Grid(values), start, end
 
 
+def find_all_starts(grid: Grid) -> list[Coord]:
+    starts = []
+    for x, row in enumerate(grid.elevations):
+        for y, value in enumerate(row):
+            if value == 1:
+                starts.append(Coord(x, y))
+
+    return starts
+
+
+def print_grid(grid: list[list[Any]]) -> None:
+    out = ""
+    for line in grid:
+        out += "| "
+        for value in line:
+            if isinstance(value, int) and 0 <= value <= 9:
+                out += " "
+            out += str(value) + " | "
+        out += "\n"
+
+    print(out)
+
 
 def run() -> None:
-    with open("example.txt", "r", encoding="utf-8") as f:
+    with open("input.txt", "r", encoding="utf-8") as f:
         lines = [line.rstrip() for line in f.readlines()]
     grid, start, end = create_grid(lines)
-    shortest_path = grid.find_shortest_path(start, end)
-    print(shortest_path)
-    print_grid(grid.memo)
-    print_grid(grid.elevations)
+    print(f"Part 1: {grid.find_shortest_path(start, end)}")
+
+    starts = find_all_starts(grid)
+    shortest_paths = filter(lambda x: x != -1, [grid.find_shortest_path(start, end) for start in starts])
+    print(f"Part 2: {min(shortest_paths)}")
 
 
 if __name__ == '__main__':
