@@ -27,9 +27,6 @@ class Sensor:
     def __str__(self) -> str:
         return f"{self.location.x}, {self.location.y}"
 
-    def __lt__(self, other: Sensor) -> bool:
-        return self.location.x < other.location.x
-
     def get_x_range(self, y: int) -> tuple[int, int] | None:
         if self.location.y - self.distance <= y <= self.location.y + self.distance:
             offset = self.distance - abs(self.location.y - y)
@@ -89,7 +86,7 @@ def get_sensors(lines: list[str]) -> list[Sensor]:
         sensor = Sensor(sensor_loc, Coord(x, y))
         sensors.append(sensor)
 
-    return sorted(sensors)
+    return sensors
 
 
 def run(filename: str, target_y: int, limit: int) -> None:
