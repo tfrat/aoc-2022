@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import sys
 import time
-from dataclasses import dataclass
 
 
 def taxi_distance(first: tuple[int, int], second: tuple[int, int]) -> int:
@@ -23,9 +22,7 @@ class Sensor:
         origin = (0, 0)
         return taxi_distance(self.location, origin) < taxi_distance(other.location, origin)
 
-    def definitely_not_beacon(self, coord: tuple[int, int]) -> bool:
-        # if coord == self.closest_beacon:
-        #     return False
+    def in_range(self, coord: tuple[int, int]) -> bool:
         return taxi_distance(self.location, coord) <= self.distance
 
 
@@ -37,26 +34,24 @@ def count_no_beacons(sensors: list[Sensor], y: int, min_x: int, max_x: int) -> i
         if location in hits:
             continue
         for sensor in sorted_sensors:
-            if sensor.definitely_not_beacon(location):
+            if sensor.in_range(location) and location != sensor.closest_beacon:
                 hits.add(location)
     return len(hits)
 
 
 def find_beacon(sensors: list[Sensor], top_left: tuple[int, int], bottom_right: tuple[int,int]) -> set[tuple]:
     hits = set()
-    searched = set()
-    sorted_sensors = sorted(sensors)
-    grid = [False ]
     for x in range(top_left[0], bottom_right[0] + 1):
         for y in range(top_left[1], bottom_right[1] + 1):
             location = (x, y)
             if location in hits:
                 continue
-            for sensor in sorted_sensors:
-                if sensor.definitely_not_beacon(location):
-                    searched.add(location)
+            hit = False
+            for sensor in sensors:
+                if sensor.in_range(location):
+                    hit = True
                     break
-            if location not in searched:
+            if not hit:
                 hits.add(location)
     return hits
 
@@ -85,10 +80,9 @@ def run(filename: str, y: int, part_2_bound: tuple[int, int]) -> None:
         lines = [line.rstrip() for line in f.readlines()]
     print(f"File: {filename}")
     sensors, min_x, max_x = get_sensors(lines)
-    # print(count_no_beacons(sensors, y, min_x, max_x))
-
-    beacons = find_beacon(sensors, (0, 0), part_2_bound)
-    print(beacons)
+    print(count_no_beacons(sensors, y, min_x, max_x))
+    # beacons = find_beacon(sensors, (0, 0), part_2_bound)
+    # print(beacons)
     print()
 
 
