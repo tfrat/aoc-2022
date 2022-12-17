@@ -43,15 +43,21 @@ class Rock(ABC):
             self.walls.add(Coord(-1, self.anchor.y + offset))
             self.walls.add(Coord(7, self.anchor.y + offset))
 
+    def __str__(self) -> str:
+        return f"{self.__class__}: {self.anchor.x}, {self.anchor.y}"
+
+    def __repr__(self) -> str:
+        return str(self)
+
     @classmethod
     @abstractmethod
     def create(cls, anchor: Coord) -> Rock:
         pass
 
     def move(self, direction: Direction, collision_map: dict[int, list[Rock]]) -> Rock | None:
-        next_position = HorizontalRock(self.anchor.move(direction))
-        if not self.walls & next_position.positions:
-            rocks = collision_map[self.anchor.y % 4]
+        next_position = self.create(self.anchor.move(direction))
+        if not self.walls & next_position.positions and next_position.anchor.y >= 0:
+            rocks = collision_map[self.anchor.y // 4]
             if not any([rock.will_collide(next_position) for rock in rocks]):
                 return next_position
         return None
@@ -94,11 +100,11 @@ class PlusRock(Rock):
     def __init__(self, anchor: Coord) -> None:
         super().__init__(anchor, 3)
         self.positions = {
-            self.anchor,
+            Coord(self.anchor.x + 1, self.anchor.y),
             Coord(self.anchor.x, self.anchor.y + 1),
-            Coord(self.anchor.x, self.anchor.y + 2),
+            Coord(self.anchor.x + 1, self.anchor.y + 1),
             Coord(self.anchor.x + 1, self.anchor.y + 2),
-            Coord(self.anchor.x - 1, self.anchor.y + 2)
+            Coord(self.anchor.x + 2, self.anchor.y + 1),
         }
 
     @classmethod
@@ -139,35 +145,33 @@ class ReverseLRock(Rock):
 
 def drop_rocks(jetstream: list[Direction], rock_count: int) -> int:
     rock_order = [HorizontalRock, PlusRock, ReverseLRock, VerticalRock, SquareRock]
-    down_toggle = True
     rock_cycle = cycle(rock_order)
     jetstream_cycle = cycle(jetstream)
     collision_map = defaultdict(list)
-    height = 3
+    height = -1
+    falling_rock = next(rock_cycle)(Coord(2, 3))
     for _ in range(rock_count):
-        falling_rock = next(rock_cycle)(Coord(2, height))
-        direction = Direction.DOWN if down_toggle else next(jetstream_cycle)
-        down_toggle = not down_toggle
-        next_rock = falling_rock.move(Direction.DOWN, collision_map)
-        falling_rock = next_rock
-        while next_rock:
+        falling = True
+        down_toggle = False
+        while falling:
             direction = Direction.DOWN if down_toggle else next(jetstream_cycle)
             down_toggle = not down_toggle
-
-
+            if next_rock := falling_rock.move(direction, collision_map):
+                falling_rock = next_rock
+            elif direction == Direction.DOWN:
+                falling = False
+        collision_map[falling_rock.anchor.y // 4].append(falling_rock)
+        height = max(height, falling_rock.anchor.y + falling_rock.height)
+        falling_rock = next(rock_cycle)(Coord(2, height + 3))
 
     return height
+
 
 def run(filename: str) -> None:
     with open(filename, "r", encoding="utf-8") as f:
         jetstream = [Direction.LEFT if char == "<" else Direction.RIGHT for char in f.readline().rstrip()]
     print(f"File: {filename}")
-    drop_rocks(jetstream, 2022)
-    first = HorizontalRock(Coord(0, 0))
-    second = VerticalRock(Coord(0, 1))
-    collision_map = defaultdict(list)
-    collision_map[1].append(first)
-    print(second.move(Direction.RIGHT, collision_map))
+    print(drop_rocks(jetstream, 2022))
     # solution here
 
     print()
