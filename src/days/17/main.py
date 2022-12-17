@@ -161,8 +161,8 @@ def draw_cave(collision_map: dict[int, set[Rock]], height: int, falling_rock: Ro
         for position in falling_rock.positions:
             cave[position.y][position.x] = "@"
     out = ""
-    for row in cave[::-1]:
-        out += "|"
+    for i, row in enumerate(cave[::-1]):
+        out += f"{i:04d} |"
         for position in row:
             out += position
         out += "|\n"
@@ -181,13 +181,14 @@ def drop_rocks(jetstream: list[Direction], rock_count: int) -> tuple[int, list]:
     for _ in range(rock_count):
         falling = True
         down_toggle = False
+        steps.append((draw_cave(collision_map, height, falling_rock), None, height))
         while falling:
             if down_toggle:
                 direction = Direction.DOWN
             else:
                 direction = next(jetstream_cycle)
             down_toggle = not down_toggle
-            steps.append((draw_cave(collision_map, height, falling_rock), direction))
+            # steps.append((draw_cave(collision_map, height, falling_rock), direction, height))
             if next_rock := falling_rock.move(direction, collision_map):
                 falling_rock = next_rock
             elif direction == Direction.DOWN:
@@ -195,8 +196,9 @@ def drop_rocks(jetstream: list[Direction], rock_count: int) -> tuple[int, list]:
         collision_map[falling_rock.anchor.y // 4].add(falling_rock)
         collision_map[(falling_rock.anchor.y + falling_rock.height) // 4].add(falling_rock)
         height = max(height, falling_rock.anchor.y + falling_rock.height)
+        steps.append((draw_cave(collision_map, height), None, height))
         falling_rock = next(rock_cycle)(Coord(2, height + 3))
-
+    # steps.append((draw_cave(collision_map, height), None, height))
     return height, steps
 
 
@@ -204,13 +206,11 @@ def run(filename: str) -> None:
     with open(filename, "r", encoding="utf-8") as f:
         jetstream = [Direction.LEFT if char == "<" else Direction.RIGHT for char in f.readline().rstrip()]
     print(f"File: {filename}")
-    rock_total = 50
+    rock_total = 100
     final_height, steps = drop_rocks(jetstream, rock_total)
-    out_str = [step[0] + "\n" + str(step[1]) + "\n\n" for step in steps]
-    for foo in out_str:
-        print(foo)
+    out_str = "".join([step[0] + "\n" + str(step[1]) + f", {step[2]}" + "\n\n" for step in steps])
     with open(f"steps-{rock_total}.txt", "w", encoding="utf-8") as f:
-        f.writelines(out_str)
+        f.write(out_str)
     print(final_height)
     # solution here
 
@@ -220,5 +220,5 @@ def run(filename: str) -> None:
 if __name__ == '__main__':
     start = time.time()
     run("example.txt")
-    run("input.txt")
+    # run("input.txt")
     print(f"Time to execute: {time.time() - start}")
