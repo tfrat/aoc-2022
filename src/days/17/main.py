@@ -19,6 +19,9 @@ class Coord:
     x: int
     y: int
 
+    def __hash__(self) -> int:
+        return hash((self.x, self.y))
+
     def move(self, direction: Direction) -> Coord:
         match direction:
             case Direction.LEFT:
@@ -49,12 +52,15 @@ class Rock(ABC):
     def __repr__(self) -> str:
         return str(self)
 
+    def __hash__(self) -> int:
+        return hash(self.anchor)
+
     @classmethod
     @abstractmethod
     def create(cls, anchor: Coord) -> Rock:
         pass
 
-    def move(self, direction: Direction, collision_map: dict[int, list[Rock]]) -> Rock | None:
+    def move(self, direction: Direction, collision_map: dict[int, set[Rock]]) -> Rock | None:
         next_position = self.create(self.anchor.move(direction))
         if not self.walls & next_position.positions and next_position.anchor.y >= 0:
             rocks = collision_map[self.anchor.y // 4]
@@ -143,35 +149,69 @@ class ReverseLRock(Rock):
         return ReverseLRock(anchor)
 
 
-def drop_rocks(jetstream: list[Direction], rock_count: int) -> int:
+def draw_cave(collision_map: dict[int, set[Rock]], height: int, falling_rock: Rock | None = None) -> str:
+    if falling_rock:
+        height = max(height, falling_rock.height + falling_rock.anchor.y)
+    cave = [["." for _ in range(7)] for _ in range(height)]
+    for rocks in collision_map.values():
+        for rock in rocks:
+            for position in rock.positions:
+                cave[position.y][position.x] = "#"
+    if falling_rock:
+        for position in falling_rock.positions:
+            cave[position.y][position.x] = "@"
+    out = ""
+    for row in cave[::-1]:
+        out += "|"
+        for position in row:
+            out += position
+        out += "|\n"
+    out += "=" * 9
+    return out
+
+
+def drop_rocks(jetstream: list[Direction], rock_count: int) -> tuple[int, list]:
     rock_order = [HorizontalRock, PlusRock, ReverseLRock, VerticalRock, SquareRock]
     rock_cycle = cycle(rock_order)
     jetstream_cycle = cycle(jetstream)
-    collision_map = defaultdict(list)
+    collision_map = defaultdict(set)
     height = -1
     falling_rock = next(rock_cycle)(Coord(2, 3))
+    steps = []
     for _ in range(rock_count):
         falling = True
         down_toggle = False
         while falling:
-            direction = Direction.DOWN if down_toggle else next(jetstream_cycle)
+            if down_toggle:
+                direction = Direction.DOWN
+            else:
+                direction = next(jetstream_cycle)
             down_toggle = not down_toggle
+            steps.append((draw_cave(collision_map, height, falling_rock), direction))
             if next_rock := falling_rock.move(direction, collision_map):
                 falling_rock = next_rock
             elif direction == Direction.DOWN:
                 falling = False
-        collision_map[falling_rock.anchor.y // 4].append(falling_rock)
+        collision_map[falling_rock.anchor.y // 4].add(falling_rock)
+        collision_map[(falling_rock.anchor.y + falling_rock.height) // 4].add(falling_rock)
         height = max(height, falling_rock.anchor.y + falling_rock.height)
         falling_rock = next(rock_cycle)(Coord(2, height + 3))
 
-    return height
+    return height, steps
 
 
 def run(filename: str) -> None:
     with open(filename, "r", encoding="utf-8") as f:
         jetstream = [Direction.LEFT if char == "<" else Direction.RIGHT for char in f.readline().rstrip()]
     print(f"File: {filename}")
-    print(drop_rocks(jetstream, 2022))
+    rock_total = 50
+    final_height, steps = drop_rocks(jetstream, rock_total)
+    out_str = [step[0] + "\n" + str(step[1]) + "\n\n" for step in steps]
+    for foo in out_str:
+        print(foo)
+    with open(f"steps-{rock_total}.txt", "w", encoding="utf-8") as f:
+        f.writelines(out_str)
+    print(final_height)
     # solution here
 
     print()
@@ -180,5 +220,5 @@ def run(filename: str) -> None:
 if __name__ == '__main__':
     start = time.time()
     run("example.txt")
-    # run("input.txt")
+    run("input.txt")
     print(f"Time to execute: {time.time() - start}")
