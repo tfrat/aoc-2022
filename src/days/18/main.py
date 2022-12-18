@@ -53,12 +53,11 @@ class LavaDropletScan:
         self.grid = [
             [
                 [
-                    Material.EXTERIOR for _ in range(self.depth + 1)
-                ] for _ in range(self.height + 1)
-            ] for _ in range(self.width + 1)
+                    Material.EXTERIOR if Coord(x, y, z) not in self.coords else Material.LAVA
+                    for z in range(self.depth + 1)
+                ] for y in range(self.height + 1)
+            ] for x in range(self.width + 1)
         ]
-        for coord in coords:
-            self.grid[coord.x][coord.y][coord.z] = Material.LAVA
         visited = [
             [
                 [
@@ -81,13 +80,14 @@ class LavaDropletScan:
         while stack:
             current = stack.pop()
 
-            if not self.in_bounds(coord):
+            if not self.in_bounds(current):
                 enclosed = False
                 continue
 
-            if visited[coord.x][coord.y][coord.z] or self.get_material(coord) == Material.LAVA:
+            if visited[current.x][current.y][current.z] or self.get_material(current) == Material.LAVA:
                 continue
-            visited[coord.x][coord.y][coord.z] = True
+
+            visited[current.x][current.y][current.z] = True
 
             for neighbor in self.neighbors:
                 stack.append(current + neighbor)
@@ -146,5 +146,5 @@ if __name__ == '__main__':
     start = time.time()
     run("example.txt")
     run("input.txt")
-    # too high 4178
+    # too high 4178, 4149
     print(f"Time to execute: {time.time() - start}")
