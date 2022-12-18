@@ -2,6 +2,13 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass
+from enum import Enum, auto
+
+
+class Material(Enum):
+    EXTERIOR = auto()
+    LAVA = auto()
+    INTERIOR = auto()
 
 
 @dataclass(frozen=True)
@@ -24,7 +31,7 @@ def get_dimensions(coords: list[Coord]) -> tuple[int, int, int]:
 
 
 class LavaDropletScan:
-    grid: list[list[list[bool]]]
+    grid: list[list[list[Material]]]
     coords: set[Coord]
     width: int
     height: int
@@ -44,17 +51,54 @@ class LavaDropletScan:
         self.grid = [
             [
                 [
-                    False for _ in range(self.depth + 1)
+                    Material.EXTERIOR for _ in range(self.depth + 1)
                 ] for _ in range(self.height + 1)
             ] for _ in range(self.width + 1)
         ]
         for coord in coords:
-            self.grid[coord.x][coord.y][coord.z] = True
+            self.grid[coord.x][coord.y][coord.z] = Material.LAVA
+        visited = [
+            [
+                [
+                    False for _ in range(self.depth + 1)
+                ] for _ in range(self.height + 1)
+            ] for _ in range(self.width + 1)
+        ]
+        for x in range(self.width):
+            for y in range(self.height):
+                for z in range(self.depth):
+                    coord = Coord(x, y, z)
+                    if self.is_enclosed_recurse(coord, visited):
+                        self.set_enclosed(coord)
 
-    def has_cube(self, coord: Coord) -> bool:
-        if 0 <= coord.x <= self.width and 0 <= coord.y <= self.height and 0 <= coord.z <= self.depth:
+    def is_enclosed_recurse(self, coord: Coord, visited: list[list[list[bool]]]):
+        if not self.is_in_of_bounds(coord):
+            return False
+
+        if visited[coord.x][coord.y][coord.z]:
+            return True
+
+        visited[coord.x][coord.y][coord.z] = True
+        is_enclosed = True
+        for neighbor in self.neighbors:
+            is_enclosed &= self.is_enclosed_recurse(coord + neighbor, visited)
+
+        return is_enclosed
+
+    def set_enclosed(self, coord: Coord) -> None:
+        if self.get_material(coord) in {Material.LAVA, Material.INTERIOR}:
+            return
+        self.grid[coord.x][coord.y][coord.z] = Material.INTERIOR
+        for neighbor in self.neighbors:
+            self.set_enclosed(coord + neighbor)
+
+    def is_in_of_bounds(self, coord: Coord) -> bool:
+        return 0 <= coord.x <= self.width and 0 <= coord.y <= self.height and 0 <= coord.z <= self.depth
+
+    def get_material(self, coord: Coord) -> Material:
+        if self.is_in_of_bounds(coord):
             return self.grid[coord.x][coord.y][coord.z]
-        return False
+        return Material.EXTERIOR
 
     @property
     def surface_area(self) -> int:
@@ -62,27 +106,11 @@ class LavaDropletScan:
         for coord in self.coords:
             surface_area = 6
             for neighbor in self.neighbors:
-                if self.has_cube(coord + neighbor):
+                if self.get_material(coord + neighbor) in {Material.LAVA, Material.INTERIOR}:
                     surface_area -= 1
             total += surface_area
 
         return total
-
-    @property
-    def reachable_surface_area(self) -> int:
-        unreachable_area = 0
-        for x in range(self.width):
-            for y in range(self.height):
-                for z in range(self.depth):
-                    location = Coord(x, y, z)
-                    if location not in self.coords:
-                        sides_touched = 0
-                        for neighbor in self.neighbors:
-                            if self.has_cube(location + neighbor):
-                                sides_touched += 1
-                        if sides_touched == 6:
-                            unreachable_area += sides_touched
-        return self.surface_area - unreachable_area
 
 
 def run(filename: str) -> None:
