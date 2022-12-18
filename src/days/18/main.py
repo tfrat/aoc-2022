@@ -20,6 +20,8 @@ class Coord:
     def __add__(self, other: Coord) -> Coord:
         return Coord(self.x + other.x, self.y + other.y, self.z + other.z)
 
+    def __str__(self) -> str:
+        return f"{self.x}, {self.y}, {self.z}"
 
 def get_dimensions(coords: list[Coord]) -> tuple[int, int, int]:
     max_width, max_height, max_depth = 0, 0, 0
@@ -68,35 +70,50 @@ class LavaDropletScan:
             for y in range(self.height):
                 for z in range(self.depth):
                     coord = Coord(x, y, z)
-                    if self.is_enclosed_recurse(coord, visited):
+                    if not visited[coord.x][coord.y][coord.z] and self.is_enclosed(coord, visited):
                         self.set_enclosed(coord)
 
-    def is_enclosed_recurse(self, coord: Coord, visited: list[list[list[bool]]]):
-        if not self.is_in_of_bounds(coord):
-            return False
+    def is_enclosed(self, coord: Coord, visited: list[list[list[bool]]]) -> bool:
+        stack = list()
+        stack.append(coord)
 
-        if visited[coord.x][coord.y][coord.z]:
-            return True
+        enclosed = True
+        while stack:
+            current = stack.pop()
 
-        visited[coord.x][coord.y][coord.z] = True
-        is_enclosed = True
-        for neighbor in self.neighbors:
-            is_enclosed &= self.is_enclosed_recurse(coord + neighbor, visited)
+            if not self.in_bounds(coord):
+                enclosed = False
+                continue
 
-        return is_enclosed
+            if visited[coord.x][coord.y][coord.z] or self.get_material(coord) == Material.LAVA:
+                continue
+            visited[coord.x][coord.y][coord.z] = True
+
+            for neighbor in self.neighbors:
+                stack.append(current + neighbor)
+
+        return enclosed
 
     def set_enclosed(self, coord: Coord) -> None:
-        if self.get_material(coord) in {Material.LAVA, Material.INTERIOR}:
-            return
-        self.grid[coord.x][coord.y][coord.z] = Material.INTERIOR
-        for neighbor in self.neighbors:
-            self.set_enclosed(coord + neighbor)
+        stack = list()
+        stack.append(coord)
 
-    def is_in_of_bounds(self, coord: Coord) -> bool:
+        while stack:
+            current = stack.pop()
+
+            if self.get_material(coord) in {Material.LAVA, Material.INTERIOR}:
+                continue
+
+            self.grid[coord.x][coord.y][coord.z] = Material.INTERIOR
+
+            for neighbor in self.neighbors:
+                stack.append(current + neighbor)
+
+    def in_bounds(self, coord: Coord) -> bool:
         return 0 <= coord.x <= self.width and 0 <= coord.y <= self.height and 0 <= coord.z <= self.depth
 
     def get_material(self, coord: Coord) -> Material:
-        if self.is_in_of_bounds(coord):
+        if self.in_bounds(coord):
             return self.grid[coord.x][coord.y][coord.z]
         return Material.EXTERIOR
 
@@ -121,7 +138,6 @@ def run(filename: str) -> None:
     coords = [Coord(*values) for values in lines]
     grid = LavaDropletScan(coords)
     print(grid.surface_area)
-    print(grid.reachable_surface_area)
 
     print()
 
