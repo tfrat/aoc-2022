@@ -31,26 +31,32 @@ class Node:
     def __repr__(self) -> str:
         return str(self)
 
+    def _shift_left(self) -> None:
+        tmp = self.prev
+        self.prev = tmp.prev
+        self.next.prev = tmp
+        tmp.next = self.next
+        self.next = tmp
+        tmp.prev = self
+        self.prev.next = self
+
+    def _shift_right(self) -> None:
+        tmp = self.next
+        self.prev.next = tmp
+        self.next = tmp.next
+        tmp.prev = self.prev
+        self.prev = tmp
+        tmp.next = self
+        self.next.prev = self
+
     def shift(self) -> None:
         left = self.value < 0
-        iterations = abs(self.value) % (self.list_length + 1)
+        iterations = abs(self.value) % (self.list_length - 1)
         for _ in range(iterations):
             if left:
-                tmp = self.prev
-                self.prev = tmp.prev
-                self.next.prev = tmp
-                tmp.next = self.next
-                self.next = tmp
-                tmp.prev = self
-                self.prev.next = self
+                self._shift_left()
             else:
-                tmp = self.next
-                self.prev.next = tmp
-                self.next = tmp.next
-                tmp.prev = self.prev
-                self.prev = tmp
-                tmp.next = self
-                self.next.prev = self
+                self._shift_right()
 
     def to_list(self) -> list[int]:
         out = [self.value]
@@ -98,7 +104,7 @@ def run(filename: str) -> None:
         code = [int(line.rstrip()) for line in f.readlines()]
     print(f"File: {filename}")
     print(f"Part 1: {decrypt(code)}")
-    # print(f"Part 2: {decrypt(code, 811589153, 10)}")
+    print(f"Part 2: {decrypt(code, 811589153, 10)}")
     print()
 
 
