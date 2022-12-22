@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from itertools import zip_longest
 
@@ -52,14 +52,17 @@ class Coord:
     x: int
     y: int
 
+    def __str__(self) -> str:
+        return f"{self.x}, {self.y}"
+
     def move(self, direction: Orientation) -> Coord:
         match direction:
             case Orientation.UP:
-                return Coord(self.x, self.y + 1)
+                return Coord(self.x, self.y - 1)
             case Orientation.RIGHT:
                 return Coord(self.x + 1, self.y)
             case Orientation.DOWN:
-                return Coord(self.x, self.y - 1)
+                return Coord(self.x, self.y + 1)
             case Orientation.LEFT:
                 return Coord(self.x - 1, self.y)
 
@@ -92,7 +95,7 @@ class Map:
         return self._grid[coord.y][coord.x]
 
     def in_bounds(self, coord: Coord) -> bool:
-        return 0 <= coord.x <= self.width and 0 <= coord.y <= self.height
+        return 0 <= coord.x < self.width and 0 <= coord.y < self.height
 
     def get_next(self, position: Coord, direction: Orientation) -> Coord | None:
         if not self.in_bounds(position):
@@ -110,7 +113,7 @@ class Map:
                     case (self.width, y):
                         next_position = Coord(0, y)
             else:
-                next_position.move(direction)
+                next_position = next_position.move(direction)
         if self.get(next_position) == Material.WALL:
             return None
         return next_position
@@ -134,6 +137,13 @@ class Map:
 class Player:
     position: Coord
     orientation: Orientation
+    history: list[tuple[Coord, Orientation]] = field(init=False)
+
+    def __post_init__(self) -> None:
+        self.history = [(self.position, self.orientation)]
+
+    def __str__(self) -> str:
+        return f"{self.position} - {self.orientation.value}"
 
     def turn(self, turn: Turn) -> None:
         self.orientation = self.orientation.turn(turn)
@@ -143,8 +153,13 @@ class Player:
         for _ in range(distance):
             next_position = grove_map.get_next(position, self.orientation)
             if not next_position:
-                return
+                break
             position = next_position
+        self.position = position
+        self.history.append((self.position, self.orientation))
+
+    def score(self) -> int:
+        return (self.position.y + 1) * 1000 + (self.position.x + 1) * 4 + self.orientation.points()
 
 
 def parse_moves(moves: str) -> list[int | Turn]:
@@ -175,12 +190,12 @@ def run(filename: str) -> None:
     moves = parse_moves(lines[-1])
     player = Player(position=grove_map.top_left(), orientation=Orientation.RIGHT)
     traverse(player, grove_map, moves)
-    print(player.position.x, player.position.y, player.orientation.value)
+    print(player.score())
     print()
 
 
 if __name__ == '__main__':
     start = time.time()
     run("example.txt")
-    # run("input.txt")
+    run("input.txt")
     print(f"Time to execute: {time.time() - start}")
