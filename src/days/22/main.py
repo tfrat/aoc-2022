@@ -55,6 +55,9 @@ class Coord:
     def __str__(self) -> str:
         return f"{self.x}, {self.y}"
 
+    def __add__(self, other: Coord) -> Coord:
+        return Coord(self.x + other.x, self.y + other.y)
+
     def move(self, direction: Orientation) -> Coord:
         match direction:
             case Orientation.UP:
@@ -132,6 +135,63 @@ class Map:
             out += "\n"
         return out
 
+
+class CubeFace:
+    top_left: Coord
+    neighbors: dict[Orientation, CubeFace]
+    _grid: list[list[Material]]
+    _grove_map: Map
+
+    def __init__(self, x_offset: int, y_offset: int, dimension: int, grove_map: Map) -> None:
+        self.top_left = Coord(x_offset, y_offset)
+        self._grove_map = grove_map
+        self._grid = [[Material.PATH for _ in range(dimension)] for _ in range(dimension)]
+        for y in range(dimension + y_offset, y_offset):
+            for x in range(dimension + x_offset, x_offset):
+                if grove_map.get(Coord(x, y)) == Material.WALL:
+                    self._grid[y][x] = Material.WALL
+
+        self.neighbors = {}
+
+    def add_neighbor(self, face: CubeFace, direction: Orientation) -> None:
+        if direction in self.neighbors:
+            return
+        self.neighbors[direction] = face
+        face.add_neighbor(self, direction.turn(Turn.LEFT).turn(Turn.LEFT))
+
+
+class CubeMap:
+    top: CubeFace
+    bottom: CubeFace
+    left: CubeFace
+    right: CubeFace
+    front: CubeFace
+    back: CubeFace
+    _grove_map: Map
+
+    def __init__(self, lines: list[str], dimension: int) -> None:
+        self._grove_map = Map(lines)
+        top_left = self._grove_map.top_left()
+        moves = [
+            (Orientation.RIGHT, Coord(dimension, 0)),
+            (Orientation.LEFT, Coord(-dimension, 0)),
+            (Orientation.DOWN, Coord(0, dimension)),
+            (Orientation.UP, Coord(0, -dimension)),
+        ]
+
+        face = CubeFace(top_left.x, top_left.y, dimension, self._grove_map)
+        faces = {face}
+        queue = [face]
+        for direction, move in moves:
+            face = queue.pop()
+            if face in faces:
+                continue
+            faces.add(face)
+            position = face.top_left + move
+            if self._grove_map.get(position) != Material.VOID:
+                neighbor = CubeFace(top_left.x - dimension, top_left.y, dimension, self._grove_map)
+                face.add_neighbor(neighbor, Orientation.LEFT)
+                queue.append(neighbor)
 
 @dataclass
 class Player:
