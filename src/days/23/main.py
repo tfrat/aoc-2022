@@ -44,6 +44,19 @@ class Coord:
             case Direction.RIGHT:
                 return {Coord(self.x + 1, self.y - 1), Coord(self.x + 1, self.y), Coord(self.x + 1, self.y + 1)}
 
+    def touching(self, others: set[Coord]) -> bool:
+        neighbors = {
+            Coord(self.x + 1, self.y + 1),
+            Coord(self.x + 1, self.y - 1),
+            Coord(self.x - 1, self.y + 1),
+            Coord(self.x - 1, self.y - 1),
+            Coord(self.x + 1, self.y),
+            Coord(self.x - 1, self.y),
+            Coord(self.x, self.y + 1),
+            Coord(self.x, self.y - 1),
+        }
+        return bool(neighbors & others)
+
 
 @dataclass
 class Elf:
@@ -111,10 +124,7 @@ def move_elves(elves: list[Elf], moves: deque[Direction]) -> tuple[deque[Directi
             if elf.proposed:
                 continue
 
-            has_neighbors = False
-            for direction in moves:
-                has_neighbors |= bool(elf.location.neighbors(direction) & current_elf_positions)
-            if not has_neighbors:
+            if not elf.location.touching(current_elf_positions):
                 continue
 
             if elf.location.neighbors(move) & current_elf_positions:
@@ -158,6 +168,6 @@ def run(filename: str) -> None:
 if __name__ == '__main__':
     start = time.time()
     # run("small_example.txt")
-    # run("example.txt")
-    run("input.txt")
+    run("example.txt")
+    # run("input.txt")
     print(f"Time to execute: {time.time() - start}")
