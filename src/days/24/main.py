@@ -175,20 +175,22 @@ def stringify_scene(mountain: Mountain, location: Coord, minute: int) -> str:
 
 def traverse(lines: list[str]) -> int:
     mountain = Mountain(lines)
-    location = mountain.entrance
-    minutes = 0
     directions = [Direction.DOWN, Direction.RIGHT, None, Direction.UP, Direction.LEFT]
     queue = deque()
-    queue.append((location, minutes))
-    while location != mountain.exit:
-        print(stringify_scene(mountain, location, minutes))
+    queue.append((mountain.entrance, 0))
+    lowest_minutes = -1
+    while queue:
+        location, minutes = queue.pop()
+        # print(stringify_scene(mountain, location, minutes))
+        if location == mountain.exit:
+            lowest_minutes = min(lowest_minutes, minutes) if lowest_minutes != -1 else minutes
+            print(lowest_minutes)
+            continue
         for direction in directions:
             next_location = location.move(direction) if direction else location
             if mountain.can_move(next_location, minutes + 1):
-                break
-        minutes += 1
-        location = next_location
-    return minutes
+                queue.append((next_location, minutes + 1))
+    return lowest_minutes
 
 
 def run(filename: str) -> None:
