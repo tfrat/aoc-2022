@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import time
+from collections.abc import MutableMapping
 from dataclasses import dataclass
 from enum import Enum
+from typing import Iterator
 
 
 class Direction(Enum):
@@ -56,21 +58,35 @@ class Blizzard:
         return Blizzard(self.location.move(self.direction), self.direction)
 
 
-class BlizzardActivity(dict[int, set[Blizzard]]):
+class BlizzardActivity(MutableMapping[int, set[Blizzard]]):
+    store: dict[int, set[Blizzard]]
     width: int
     height: int
     border: set[Coord]
 
     def __init__(self, width: int, height: int, border: set[Coord]) -> None:
         super().__init__()
+        self.store = {}
         self.width = width
         self.height = height
         self.border = border
 
     def __getitem__(self, minute: int) -> set[Blizzard]:
-        if minute not in self:
-            self[minute] = self._move_blizzards(minute - 1)
-        return self[minute]
+        if minute not in self.store:
+            self.store[minute] = self._move_blizzards(minute - 1)
+        return self.store[minute]
+
+    def __setitem__(self, key: int, value: set[Blizzard]) -> None:
+        self.store[key] = value
+
+    def __delitem__(self, key: int) -> None:
+        del self.store[key]
+
+    def __len__(self) -> int:
+        return len(self.store)
+
+    def __iter__(self) -> Iterator[int]:
+        return iter(self)
 
     def _move_blizzards(self, minute: int) -> set[Blizzard]:
         blizzards = self.get(minute)
@@ -125,6 +141,13 @@ class Mountain:
         self.blizzard_activity = BlizzardActivity(self.width, self.height, self.border)
         self.blizzard_activity[0] = blizzards
 
+    def can_move(self, location: Coord, minute: int) -> bool:
+        if location in self.border or location == self.entrance:
+            return False
+        if location in {blizzard.location for blizzard in self.blizzard_activity[minute]}:
+            return False
+        return True
+
 
 def run(filename: str) -> None:
     with open(filename, "r", encoding="utf-8") as f:
@@ -132,7 +155,7 @@ def run(filename: str) -> None:
     print(f"File: {filename}")
     mountain = Mountain(lines)
     # solution here
-    blizzards = mountain.move_blizzards()
+    foo = mountain.can_move(Coord(1, 1), 5)
     print()
 
 
