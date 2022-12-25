@@ -3,7 +3,7 @@ from __future__ import annotations
 import time
 from dataclasses import dataclass, field
 from functools import reduce
-from itertools import zip_longest, accumulate
+from itertools import zip_longest
 from operator import add
 
 SNAFU_VALUES = {
@@ -38,19 +38,6 @@ class Snafu:
     def __repr__(self) -> str:
         return str(self)
 
-    """
-    21
-    1=
-    1=-
-    25 + -10 + -1
-    14
-    
-    2
-    2
-    1-
-    
-    """
-
     def __add__(self, other: Snafu) -> Snafu:
         sum_digits = []
         carry = 0
@@ -65,7 +52,11 @@ class Snafu:
             if digit > 2:
                 carry = 1
                 digit = -2 + (digit - 3)
-
+            elif digit < -2:
+                carry = -1
+                digit = 2 + (digit + 3)
+            else:
+                carry = 0
             sum_digits.append(digit)
         if carry:
             sum_digits.append(carry)
@@ -85,8 +76,6 @@ def run(filename: str) -> None:
         lines = [line.rstrip() for line in f.readlines()]
     print(f"File: {filename}")
     snafus = [Snafu(line) for line in lines]
-    # for snafu in snafus:
-    #     print(f"{snafu} = {snafu.base_10}")
     total = reduce(add, snafus)
     print(total, total.base_10)
     print()
@@ -95,5 +84,5 @@ def run(filename: str) -> None:
 if __name__ == '__main__':
     start = time.time()
     run("example.txt")
-    # run("input.txt")
+    run("input.txt")
     print(f"Time to execute: {time.time() - start}")
